@@ -155,25 +155,15 @@ def run_game():
 
         # **결과 이미지 업데이트**
         result_image_placeholder.image(result_image, use_container_width=True)
-        result_placeholder.markdown(f"""
-        <h3 style='text-align: center;'>🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}</h3>
-        <h2 style='text-align: center; color: black;'>결과 ➡️ <strong>{game_result}</strong></h2>
-        """, unsafe_allow_html=True)
         
         # **MP 업데이트 반영**
         game_progress_placeholder.write(f"🔹 진행 상황: 몬스터 MP {monster_mp} 남음")
         mp_placeholder.progress(monster_mp / st.session_state.initial_mp)
 
-        # **1초 대기 후 다음 게임 진행**
         time.sleep(1)
 
     # **몬스터를 물리친 메시지 및 승리 이미지 변경**
     message_placeholder.success("🎉 몬스터를 물리쳤습니다!")
-    result_image_placeholder.image("image/승리.png", use_container_width=True)  # 🔹 승리 이미지 추가
-    cap.release()
+    result_image_placeholder.image("image/승리.png", use_container_width=True)
 
-    # **내 랭킹 확인 및 표시**
-    win_df = pd.read_csv(csv_file)
-    ranking_placeholder.subheader(f"🏆 몬스터 MP {st.session_state.initial_mp} 랭킹")
-    mp_ranking = win_df[win_df["몬스터 MP"] == st.session_state.initial_mp].sort_values(by="시간").head(5)
-    ranking_placeholder.table(mp_ranking.set_index("이름"))
+    cap.release()
