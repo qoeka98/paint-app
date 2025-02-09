@@ -1,5 +1,4 @@
 streamlit
 pandas
-cv2
-time
-tensorflow == 2.15
+opencv-python 
+tensorflow==2.15
