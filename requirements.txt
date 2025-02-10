@@ -5,6 +5,7 @@ tensorflow==2.15
 numpy
 Pillow
 protobuf
-
+fastapi
+uvicorn
 
 
