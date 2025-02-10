@@ -1,4 +1,2 @@
-import streamlit as st
-
 def run_ml():
-    pass
+    return "<p>Machine Learning 페이지입니다.</p>"
