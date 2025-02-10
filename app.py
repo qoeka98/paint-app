@@ -1,16 +1,35 @@
-import streamlit as st
-from eda import run_eda
-from home import run_home
-from ml import run_ml
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, StreamingResponse
+import uvicorn
+import cv2
+from eda import get_eda_page
+from home import get_home_page
+from ml import get_ml_page
+from game import generate_frames
 
-# 🔹 **사이드바 메뉴 추가**
-menu_option = st.sidebar.radio("메뉴 선택", ["🏠 홈", "🎮 게임",'앱개발과정'])
+# ✅ FastAPI 앱 객체 생성
+app = FastAPI()
 
-if menu_option == "🏠 홈":
-    run_home()
+# ✅ 웹캠 스트리밍 API
+@app.get("/video_feed")
+def video_feed():
+    return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
-elif menu_option == "🎮 게임":
-    run_eda()  
+# 🔹 **홈 화면 API**
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return get_home_page()
 
-elif menu_option == '앱개발과정':
-    run_ml()
+# 🔹 **게임 화면 API**
+@app.get("/game", response_class=HTMLResponse)
+def game():
+    return get_eda_page()
+
+# 🔹 **앱 개발 과정 API**
+@app.get("/ml", response_class=HTMLResponse)
+def ml():
+    return get_ml_page()
+
+# ✅ FastAPI 실행
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
