@@ -1,14 +1,8 @@
-from tempfile import template
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import cv2
-from fastapi.templating import Jinja2Templates
-
-from eda import run_eda
 
 app = FastAPI()
-
-templates = Jinja2Templates(directory="templates")
 
 # 웹캠 활성화
 cap = cv2.VideoCapture(0)
@@ -28,15 +22,6 @@ def generate_frames():
 async def video_feed():
     """ 실시간 웹캠 스트리밍 엔드포인트 """
     return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
-
-
-@app.get("/game")
-async def game_page(request: Request):
-    try:
-        content = run_eda()
-        return templates.TemplateResponse("page.html", {"request": request, "content": content, "title": "🎮 게임 페이지"})
-    except Exception as e:
-        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
