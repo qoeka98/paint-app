@@ -7,7 +7,6 @@ from home import get_home_page
 from ml import get_ml_page
 from game import generate_frames
 
-# ✅ FastAPI 앱 객체 생성
 app = FastAPI()
 
 # ✅ 웹캠 스트리밍 API
@@ -32,4 +31,4 @@ def ml():
 
 # ✅ FastAPI 실행
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
