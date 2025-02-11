@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image
 import time
 
 def run_game():
@@ -38,7 +38,7 @@ def run_game():
 
     # UI 구성
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info('📸 2초 후 자동으로 사진이 촬영됩니다! 손을 초록색 박스 안에 맞춰주세요.')
+    st.info('📸 2초 후 자동으로 사진이 촬영됩니다!')
 
     col1, col2 = st.columns(2)
     with col1:
@@ -52,27 +52,18 @@ def run_game():
             st.session_state.game_message = "게임이 강제 종료되었습니다!"
             st.stop()
 
-    # 📸 **2초 대기 후 자동 촬영**
-    with st.spinner("📸 2초 후 자동으로 사진이 촬영됩니다... 손을 올바르게 배치하세요!"):
+    # **2초 후 자동 촬영**
+    with st.spinner("📸 2초 후 자동 촬영 중... 손을 올바르게 올려주세요!"):
         time.sleep(2)
 
-    # 🎥 **카메라 입력 받기**
-    image = st.camera_input("📸 손 모양을 촬영하세요!")
+    # **카메라 입력 (자동 촬영)**
+    image = st.camera_input("📸 손 모양을 촬영 중...")
 
     if image is not None:
-        # 🖼️ **초록색 네모 테두리 추가**
+        # **이미지 전처리**
         img = Image.open(image).convert("RGB")
-        draw = ImageDraw.Draw(img)
-        img_width, img_height = img.size
-        box_size = min(img_width, img_height) // 2
-        x1, y1 = (img_width - box_size) // 2, (img_height - box_size) // 2
-        x2, y2 = x1 + box_size, y1 + box_size
-        draw.rectangle([x1, y1, x2, y2], outline="green", width=5)  # 초록색 네모
-
-        # 🖼️ **이미지 전처리**
-        img_cropped = img.crop((x1, y1, x2, y2))  # 초록 네모 안의 부분만 크롭
-        img_resized = img_cropped.resize((224, 224))
-        img_array = np.array(img_resized, dtype=np.float32) / 255.0
+        img = img.resize((224, 224))
+        img_array = np.array(img, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
         # 🤖 **모델 예측**
