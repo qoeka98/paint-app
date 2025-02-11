@@ -1,116 +1,102 @@
 import tensorflow as tf
 import numpy as np
+import cv2
 import time
 import pandas as pd
 import os
-import streamlit as st
+import gradio as gr
 from PIL import Image
-import cv2
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
-def run_game():
-    # 모델 로드
-    model_path = "model/keras_model.h5"
-    try:
-        model = tf.keras.models.load_model(model_path)
-    except Exception as e:
-        st.error(f"모델을 로드하는 중 오류 발생: {e}")
-        return
+# TensorFlow 경고 메시지 비활성화
+tf.get_logger().setLevel("ERROR")
 
-    # 클래스 매핑
-    class_names = ["가위", "바위", "보"]
+# 모델 로드 (경고 메시지 해결)
+model_path = "model/keras_model.h5"
 
-    # 승리 기록 저장 파일
-    csv_file = "win_records.csv"
-    if not os.path.exists(csv_file):
-        pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
+try:
+    model = tf.keras.models.load_model(model_path, compile=False)  # 🔹 compile=False 설정
+    model.compile(optimizer=tf.keras.optimizers.Adam(), loss="categorical_crossentropy", metrics=["accuracy"])  # 🔹 수동 컴파일
+except Exception as e:
+    print(f"🚨 모델 로딩 오류: {e}")
+    exit()
 
-    # 게임 UI
-    st.title("🎮 가위바위보 몬스터 배틀")
-    st.subheader("📷 웹캠을 활성화하고 손을 네모 안에 맞춰 가위, 바위, 보를 선택하세요!")
+# 클래스 매핑
+class_names = ["가위", "바위", "보"]
 
-    # **게임 재시작 & 종료 버튼**
-    col_button1, col_button2 = st.columns(2)
-    with col_button1:
-        if st.button("🔄 게임 재시작"):
-            st.session_state.monster_mp = 50
-            st.rerun()
-    with col_button2:
-        if st.button("🛑 게임 종료"):
-            st.stop()
+# 몬스터 초기 HP 설정
+INITIAL_MONSTER_MP = 50
 
-    # Streamlit WebRTC를 활용한 웹캠 스트리밍
-    class VideoTransformer(VideoTransformerBase):
-        def transform(self, frame):
-            try:
-                img = frame.to_ndarray(format="bgr24")
-                h, w, _ = img.shape
-                box_size = min(h, w) // 2
-                x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-                x2, y2 = x1 + box_size, y1 + box_size
+def process_game(image, monster_mp):
+    """
+    이미지를 받아 가위바위보 판정을 하고, 몬스터 MP를 감소시키는 함수
+    """
+    if image is None:
+        return "❌ 이미지를 업로드하거나 웹캠을 사용하세요!", "image/가위바위보 홈.png", monster_mp, f"몬스터 HP: {monster_mp}"
 
-                # 네모 박스 그리기
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                return img
-            except Exception as e:
-                st.error(f"프레임 처리 오류: {e}")
-                return frame
+    # 이미지 전처리
+    img = image.convert("RGB")
+    img = img.resize((224, 224))
+    img = np.array(img, dtype=np.float32) / 255.0
+    img = np.expand_dims(img, axis=0)
 
-    webrtc_ctx = webrtc_streamer(
-        key="game_stream",
-        video_transformer_factory=VideoTransformer,
-        async_transform=True,
-        rtc_configuration={"iceServers": [
-            {"urls": ["stun:stun.l.google.com:19302"]},
-            {"urls": ["stun:stun1.l.google.com:19302"]},
-            {"urls": ["stun:stun2.l.google.com:19302"]},
-            {"urls": ["stun:stun3.l.google.com:19302"]},
-            {"urls": ["stun:stun4.l.google.com:19302"]}
-        ]}
-    )
+    # 모델 예측
+    prediction = model.predict(img)
+    class_index = np.argmax(prediction)
+    confidence = np.max(prediction)
 
-    # 결과 표시 영역
-    result_placeholder = st.empty()
+    if confidence < 0.7:
+        return "⚠️ 손을 정확히 올려주세요!", "image/가위바위보 홈.png", monster_mp, f"몬스터 HP: {monster_mp}"
 
-    if webrtc_ctx.video_receiver and webrtc_ctx.video_receiver.last_frame is not None:
-        st.write("📸 웹캠이 활성화되었습니다!")
+    user_choice = class_names[class_index]
+    monster_choice = np.random.choice(["가위", "바위", "보"])
 
-        try:
-            frame = webrtc_ctx.video_receiver.last_frame.to_ndarray(format="bgr24")
-            h, w, _ = frame.shape
-            box_size = min(h, w) // 2
-            x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-            x2, y2 = x1 + box_size, y1 + box_size
+    # 승패 판정
+    game_result = "⚖️ 비김"
+    result_image = "image/비김.png"
 
-            roi = frame[y1:y2, x1:x2]
-            img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-            img = cv2.resize(img, (224, 224))
-            img = img / 255.0
-            img = np.expand_dims(img, axis=0)
+    if (user_choice == "가위" and monster_choice == "보") or \
+       (user_choice == "바위" and monster_choice == "가위") or \
+       (user_choice == "보" and monster_choice == "바위"):
+        game_result = "✅ 승리"
+        result_image = "image/이겼다.png"
+        monster_mp -= 10  # 몬스터 MP 감소
+    elif user_choice != monster_choice:
+        game_result = "❌ 패배"
+        result_image = "image/졌다.png"
 
-            prediction = model.predict(img)
-            class_index = np.argmax(prediction)
-            confidence = np.max(prediction)
+    # 게임 종료 조건
+    if monster_mp <= 0:
+        return "🎉 몬스터를 물리쳤습니다!", "image/승리.png", 0, f"몬스터 HP: 0 (게임 종료)"
 
-            if confidence < 0.7:
-                st.warning("⚠️ 손을 네모 안에 정확히 올려주세요!")
-            else:
-                user_choice = class_names[class_index]
-                monster_choice = np.random.choice(["가위", "바위", "보"])
-                game_result = "⚖️ 비김"
-                result_image = "image/비김.png"
+    return f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice} ➡️ {game_result}", \
+           result_image, monster_mp, f"몬스터 HP: {monster_mp}"
 
-                if (user_choice == "가위" and monster_choice == "보") or \
-                   (user_choice == "바위" and monster_choice == "가위") or \
-                   (user_choice == "보" and monster_choice == "바위"):
-                    game_result = "✅ 승리"
-                    result_image = "image/이겼다.png"
-                elif user_choice != monster_choice:
-                    game_result = "❌ 패배"
-                    result_image = "image/졌다.png"
+def reset_game():
+    """
+    게임 초기화 함수
+    """
+    return f"몬스터 HP: {INITIAL_MONSTER_MP}", "image/가위바위보 홈.png", INITIAL_MONSTER_MP, ""
 
-                result_placeholder.image(result_image, use_column_width=True)
-                st.write(f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}")
-                st.write(f"결과: {game_result}")
-        except Exception as e:
-            st.error(f"이미지 처리 오류: {e}")
+# Gradio 인터페이스
+with gr.Blocks() as demo:
+    gr.Markdown("## 🎮 가위바위보 게임 (AI vs Player)")
+    gr.Markdown("웹캠이나 사진을 업로드하여 가위바위보를 플레이하세요!")
+
+    with gr.Row():
+        image_input = gr.Image(image_mode="webcam", type="pil", interactive=True, label="📸 웹캠을 사용하세요!")
+
+
+        result_image = gr.Image(value="image/가위바위보 홈.png", label="🎯 게임 결과", interactive=False)
+
+    result_text = gr.Textbox(label="📢 결과", interactive=False)
+    monster_hp_text = gr.Textbox(value=f"몬스터 HP: {INITIAL_MONSTER_MP}", interactive=False)
+
+    with gr.Row():
+        play_button = gr.Button("📸 촬영 및 판정")
+        reset_button = gr.Button("🔄 게임 재시작")
+
+    play_button.click(process_game, inputs=[image_input, monster_hp_text], outputs=[result_text, result_image, monster_hp_text, monster_hp_text])
+    reset_button.click(reset_game, outputs=[result_text, result_image, monster_hp_text, monster_hp_text])
+
+# 실행
+demo.launch(debug=True) 
