@@ -3,79 +3,101 @@ import numpy as np
 import pandas as pd
 import os
 import streamlit as st
-from PIL import Image
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import av
+import cv2
 import time
+from PIL import Image
 
-def run_game():
-    # 모델 로드
-    model_path = "model/keras_model.h5"
-    if not os.path.exists(model_path):
-        st.error(f"❌ 모델 파일이 존재하지 않습니다: {model_path}")
-        return
+# 모델 로드
+model_path = "model/keras_model.h5"
+if not os.path.exists(model_path):
+    st.error(f"❌ 모델 파일이 존재하지 않습니다: {model_path}")
+else:
+    model = tf.keras.models.load_model(model_path)
 
-    try:
-        model = tf.keras.models.load_model(model_path)
-    except Exception as e:
-        st.error(f"⚠️ 모델 로드 중 오류 발생: {e}")
-        return
+# 클래스 매핑
+class_names = ["가위", "바위", "보"]
 
-    class_names = ["가위", "바위", "보"]
+# CSV 파일 존재 여부 확인
+csv_file = "win_records.csv"
+if not os.path.exists(csv_file) or os.stat(csv_file).st_size == 0:
+    pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
 
-    # CSV 파일 존재 여부 확인
-    csv_file = "win_records.csv"
-    if not os.path.exists(csv_file) or os.stat(csv_file).st_size == 0:
-        pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
+# **세션 변수 초기화**
+if "monster_mp" not in st.session_state:
+    st.session_state.monster_mp = 50  # 기본값 설정
+if "initial_mp" not in st.session_state:
+    st.session_state.initial_mp = st.session_state.monster_mp
+if "game_running" not in st.session_state:
+    st.session_state.game_running = True
+if "ranking_updated" not in st.session_state:
+    st.session_state.ranking_updated = False
 
-    # **세션 변수 초기화**
-    if "monster_mp" not in st.session_state:
-        st.session_state.monster_mp = 50  # 기본값 설정
-    if "initial_mp" not in st.session_state:
-        st.session_state.initial_mp = st.session_state.monster_mp
-    if "game_running" not in st.session_state:
+# UI 구성
+st.subheader("🎮 가위바위보 몬스터 배틀 게임")
+st.info('📸 웹캠을 켜고 초록색 네모 안에 손을 위치시키세요!')
+
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔄 게임 재시작"):
         st.session_state.game_running = True
-    if "ranking_updated" not in st.session_state:
-        st.session_state.ranking_updated = False
+        st.session_state.monster_mp = st.session_state.initial_mp  # MP 초기화
+        st.rerun()
+with col2:
+    if st.button("🛑 게임 종료"):
+        st.session_state.game_running = False
+        st.session_state.game_message = "게임이 강제 종료되었습니다!"
+        st.stop()
 
-    # UI 구성
-    st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info('📸 3초 후 자동으로 사진이 촬영됩니다!')
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 게임 재시작"):
-            st.session_state.game_running = True
-            st.session_state.monster_mp = st.session_state.initial_mp  # MP 초기화
-            st.rerun()
-    with col2:
-        if st.button("🛑 게임 종료"):
-            st.session_state.game_running = False
-            st.session_state.game_message = "게임이 강제 종료되었습니다!"
-            st.stop()
+# 🎥 **WebRTC 기반 실시간 웹캠 스트리밍**
+class VideoTransformer(VideoTransformerBase):
+    def __init__(self):
+        self.last_captured_time = time.time()
+        self.capture_interval = 3  # 3초마다 캡처
+        self.frame_to_analyze = None
 
-    # **3초 후 자동 촬영**
-    with st.spinner("📸 3초 후 자동 촬영 중... 손을 올바르게 올려주세요!"):
-        time.sleep(3)
+    def transform(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        h, w, _ = img.shape
 
-    # **카메라 입력 (자동 촬영)**
-    image = st.camera_input("📸 손 모양을 촬영 중...")
+        # 초록 네모 박스 설정
+        box_size = min(h, w) // 2
+        x1, y1 = (w - box_size) // 2, (h - box_size) // 2
+        x2, y2 = x1 + box_size, y1 + box_size
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)  # 초록 네모
 
-    if image is not None:
-        # **이미지 전처리**
-        img = Image.open(image).convert("RGB")
-        img = img.resize((224, 224))
-        img_array = np.array(img, dtype=np.float32) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
+        # 3초마다 이미지 캡처
+        if time.time() - self.last_captured_time > self.capture_interval:
+            self.frame_to_analyze = img[y1:y2, x1:x2]  # 박스 안의 부분만 저장
+            self.last_captured_time = time.time()
 
-        # 🤖 **모델 예측**
-        prediction = model.predict(img_array)
-        class_index = np.argmax(prediction)
-        confidence = np.max(prediction)
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-        if confidence < 0.7:
-            st.warning("⚠️ 손 모양을 정확히 인식하지 못했습니다. 다시 촬영해주세요!")
-            return
+webrtc_ctx = webrtc_streamer(
+    key="game",
+    video_transformer_factory=VideoTransformer,
+    async_transform=True
+)
 
-        # 🏆 **가위바위보 판단**
+# **3초마다 캡처된 프레임을 분석**
+if webrtc_ctx.video_transformer and webrtc_ctx.video_transformer.frame_to_analyze is not None:
+    captured_img = webrtc_ctx.video_transformer.frame_to_analyze
+
+    # **이미지 전처리**
+    img = cv2.cvtColor(captured_img, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(img)
+    img = img.resize((224, 224))
+    img_array = np.array(img, dtype=np.float32) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    # 🤖 **모델 예측**
+    prediction = model.predict(img_array)
+    class_index = np.argmax(prediction)
+    confidence = np.max(prediction)
+
+    if confidence >= 0.7:
         user_choice = class_names[class_index]
         monster_choice = np.random.choice(["가위", "바위", "보"])
 
@@ -92,7 +114,6 @@ def run_game():
         elif user_choice != monster_choice:
             game_result = "❌ 패배"
             result_image = "image/졌다.png"
-            st.session_state.game_time_penalty = st.session_state.get("game_time_penalty", 0) + 3  # 패배 시 3초 추가
 
         # **MP가 0 이하가 되지 않도록 방지**
         monster_mp = max(monster_mp, 0)
