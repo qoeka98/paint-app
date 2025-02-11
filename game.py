@@ -43,6 +43,7 @@ def run_game():
     with col1:
         if st.button("🔄 게임 재시작"):
             st.session_state.game_running = True
+            st.session_state.monster_mp = st.session_state.initial_mp  # MP 초기화
             st.rerun()
     with col2:
         if st.button("🛑 게임 종료"):
@@ -87,16 +88,20 @@ def run_game():
             game_result = "❌ 패배"
             result_image = "image/졌다.png"
 
-        # 결과 출력
+        # **MP가 0 이하가 되지 않도록 방지**
+        monster_mp = max(monster_mp, 0)
+        st.session_state.monster_mp = monster_mp
+
+        # **결과 출력**
         st.subheader(f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}")
         st.image(result_image, use_container_width=True)
         st.markdown(f"### 결과 ➡️ **{game_result}**")
 
-        # 몬스터 HP 업데이트
-        st.session_state.monster_mp = monster_mp
-        st.progress(monster_mp / st.session_state.initial_mp)
+        # **MP 진행률 바 업데이트**
+        progress_value = max(monster_mp / st.session_state.initial_mp, 0)  # 0 이하 방지
+        st.progress(progress_value)
 
-        # 게임 종료 체크
+        # **게임 종료 체크**
         if monster_mp <= 0:
             st.success("🎉 몬스터를 물리쳤습니다!")
             st.session_state.game_running = False
@@ -112,7 +117,7 @@ def run_game():
             win_df = pd.concat([win_df, new_record], ignore_index=True)
             win_df.to_csv(csv_file, index=False)
 
-            # 랭킹 표시
+            # 🏆 랭킹 표시
             st.subheader(f"🏆 몬스터 MP {st.session_state.initial_mp} 랭킹")
             ranking_df = win_df[win_df["몬스터 MP"] == st.session_state.initial_mp].sort_values(by="시간").head(5)
             st.table(ranking_df.set_index("이름"))
