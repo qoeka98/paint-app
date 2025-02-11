@@ -28,6 +28,7 @@ st.info('웹캠을 활성화하고 네모 안에 손을 정확히 올려주세�
 col_button1, col_button2 = st.columns(2)
 with col_button1:
     if st.button("🔄 게임 재시작"):
+        st.session_state.monster_mp = 50
         st.rerun()
 with col_button2:
     if st.button("🛑 게임 종료"):
@@ -60,8 +61,13 @@ if webrtc_ctx.video_transformer:
     st.write("📸 웹캠이 활성화되었습니다!")
 
     if st.button("🔍 이미지 캡처 및 분석"):
-        if webrtc_ctx.video_transformer:
-            frame = webrtc_ctx.video_transformer.transform(webrtc_ctx.video_receiver.last_frame)
+        frame = webrtc_ctx.video_transformer.transform(webrtc_ctx.video_receiver.last_frame)
+        if frame is not None:
+            h, w, _ = frame.shape
+            box_size = min(h, w) // 2
+            x1, y1 = (w - box_size) // 2, (h - box_size) // 2
+            x2, y2 = x1 + box_size, y1 + box_size
+            
             roi = frame[y1:y2, x1:x2]
             img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
             img = cv2.resize(img, (224, 224))
@@ -87,6 +93,7 @@ if webrtc_ctx.video_transformer:
                     result_image = "image/이겼다.png"
                     monster_mp -= 10
                     win_count += 1
+                    st.session_state.monster_mp = monster_mp
                 elif user_choice != monster_choice:
                     game_result = "❌ 패배"
                     result_image = "image/졌다.png"
