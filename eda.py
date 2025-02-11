@@ -6,7 +6,7 @@ import sys
 # 🚀 경로 문제 해결 (game.py가 같은 폴더에 없을 경우 대비)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from game import run_game  # game.py가 같은 폴더에 있어야 함
+from game import run_game  
 
 def run_eda():
     # 승리 기록 저장 파일
