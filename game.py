@@ -3,8 +3,8 @@ import tensorflow as tf
 import numpy as np
 import os
 import cv2
-import time
 from PIL import Image
+import time
 
 def run_game():
     # ✅ 모델 로드
@@ -25,7 +25,12 @@ def run_game():
         st.session_state.game_running = True
 
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info("📸 아래 버튼을 눌러 손 모양을 촬영하세요!")
+    st.info("📸 아래 버튼을 눌러 손 모양을 촬영하세요! 몬스터 MP가 0이 될 때까지 계속 도전하세요!")
+
+    # ✅ 몬스터 MP가 0이면 게임 종료 메시지 표시
+    if st.session_state.monster_mp <= 0:
+        st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
+        return
 
     # ✅ 카메라 입력 (사용자가 직접 촬영)
     img_file = st.camera_input("📷 손 모양을 촬영하세요")
@@ -68,4 +73,10 @@ def run_game():
             # ✅ 몬스터 MP가 0이면 게임 종료
             if st.session_state.monster_mp <= 0:
                 st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
-                st.session_state.game_running = False
+                return
+
+        else:
+            st.warning("⚠️ 손을 정확히 보여주세요! 판별 실패.")
+
+    # ✅ 게임이 끝나지 않았으면, 계속 촬영 가능하도록 UI 유지
+    st.button("📸 다시 촬영하기")
