@@ -10,5 +10,5 @@ protobuf==3.20.3
 fastapi
 uvicorn
 aiortc
-
+cv2
 av 
