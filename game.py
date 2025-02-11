@@ -112,3 +112,4 @@ def run_game():
             st.subheader(f"🏆 몬스터 MP {st.session_state.initial_mp} 랭킹")
             ranking_df = win_df[win_df["몬스터 MP"] == st.session_state.initial_mp].sort_values(by="시간").head(5)
             st.table(ranking_df.set_index("이름"))
+
