@@ -1,11 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import cv2
-import time
 import pandas as pd
 import os
 import streamlit as st
 from PIL import Image
+import time
 
 def run_game():
     # ✅ Teachable Machine 모델 로드
@@ -34,16 +33,7 @@ def run_game():
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
     st.info('📸 웹캠을 통해 손 모양을 인식하세요!')
 
-    # ✅ 웹캠 선택 (0: 기본 웹캠, 1: USB 웹캠)
-    webcam_index = st.radio("📷 사용할 웹캠 선택", [0, 1], format_func=lambda x: f"웹캠 {x}")
-
-    # ✅ USB 웹캠 활성화
-    cap = cv2.VideoCapture(webcam_index)
-    if not cap.isOpened():
-        st.error("❌ 웹캠을 찾을 수 없습니다. USB 웹캠이 올바르게 연결되었는지 확인하세요.")
-        return
-
-    # ✅ Streamlit UI
+    # ✅ Streamlit UI 요소
     image_placeholder = st.empty()
     countdown_placeholder = st.empty()
     result_placeholder = st.empty()
@@ -60,78 +50,56 @@ def run_game():
         minutes, seconds = divmod(int(elapsed_time), 60)
         timer_placeholder.write(f"⏳ **경과 시간: {minutes:02}:{seconds:02}**")
 
-        countdown_time = 3  # 3초 후 자동 촬영
-        capture_time = time.time() + countdown_time
-
         # ✅ 3초 후 자동 촬영
-        while time.time() < capture_time:
-            ret, frame = cap.read()
-            if not ret:
-                st.error("❌ 웹캠을 찾을 수 없습니다.")
-                return
+        countdown_placeholder.write("📸 **3초 후 자동 촬영!**")
+        time.sleep(3)
 
-            # ✅ 초록색 네모 박스 추가
-            h, w, _ = frame.shape
-            box_size = min(h, w) // 2
-            x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-            x2, y2 = x1 + box_size, y1 + box_size
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        # ✅ Streamlit 웹캠 입력 (`st.camera_input` 사용)
+        uploaded_image = st.camera_input("📸 카메라에 손을 올리고 기다리세요!")
 
-            image_placeholder.image(frame, channels="BGR", use_container_width=True)
-            remaining_time = int(capture_time - time.time())
-            countdown_placeholder.write(f"📸 **{remaining_time}초 후 촬영!**")
+        if uploaded_image is not None:
+            # ✅ 이미지를 판별할 수 있도록 변환
+            img = Image.open(uploaded_image)
+            img = img.resize((224, 224))
+            img_array = np.array(img, dtype=np.float32) / 255.0
+            img_array = np.expand_dims(img_array, axis=0)
 
-        countdown_placeholder.write("📸 **찰칵!**")
+            # ✅ AI 모델 예측
+            prediction = model.predict(img_array)
+            class_index = np.argmax(prediction)
+            confidence = np.max(prediction)
 
-        # ✅ 촬영 후 이미지 처리
-        ret, frame = cap.read()
-        if not ret:
-            st.error("❌ 웹캠을 찾을 수 없습니다.")
-            return
+            if confidence < 0.7:
+                result_placeholder.write("⚠️ 손을 네모 안에 정확하게 올려주세요!")
+                continue
 
-        roi = frame[y1:y2, x1:x2]
-        img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (224, 224))
-        img = np.array(img, dtype=np.float32) / 255.0
-        img = np.expand_dims(img, axis=0)
+            user_choice = class_names[class_index]
+            monster_choice = np.random.choice(["가위", "바위", "보"])
 
-        # ✅ AI 모델 예측
-        prediction = model.predict(img)
-        class_index = np.argmax(prediction)
-        confidence = np.max(prediction)
+            # ✅ 승패 판정
+            game_result = "⚖️ 비김"
+            if (user_choice == "가위" and monster_choice == "보") or \
+               (user_choice == "바위" and monster_choice == "가위") or \
+               (user_choice == "보" and monster_choice == "바위"):
+                game_result = "✅ 승리"
+                st.session_state.monster_mp -= 10
+            elif user_choice != monster_choice:
+                game_result = "❌ 패배"
 
-        if confidence < 0.7:
-            result_placeholder.write("⚠️ 손을 네모 안에 정확하게 올려주세요!")
-            continue
+            # ✅ 결과 출력
+            result_placeholder.markdown(f"""
+            <h3 style='text-align: center;'>🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}</h3>
+            <h2 style='text-align: center; color: black;'>결과 ➡️ <strong>{game_result}</strong></h2>
+            """, unsafe_allow_html=True)
 
-        user_choice = class_names[class_index]
-        monster_choice = np.random.choice(["가위", "바위", "보"])
+            # ✅ MP 업데이트
+            game_progress_placeholder.write(f"🔹 진행 상황: 몬스터 MP {st.session_state.monster_mp} 남음")
+            mp_placeholder.progress(max(st.session_state.monster_mp / st.session_state.initial_mp, 0))
 
-        # ✅ 승패 판정
-        game_result = "⚖️ 비김"
-        if (user_choice == "가위" and monster_choice == "보") or \
-           (user_choice == "바위" and monster_choice == "가위") or \
-           (user_choice == "보" and monster_choice == "바위"):
-            game_result = "✅ 승리"
-            st.session_state.monster_mp -= 10
-        elif user_choice != monster_choice:
-            game_result = "❌ 패배"
+            # ✅ 몬스터 MP가 0이면 게임 종료
+            if st.session_state.monster_mp <= 0:
+                st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
+                break
 
-        # ✅ 결과 출력
-        result_placeholder.markdown(f"""
-        <h3 style='text-align: center;'>🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}</h3>
-        <h2 style='text-align: center; color: black;'>결과 ➡️ <strong>{game_result}</strong></h2>
-        """, unsafe_allow_html=True)
-
-        # ✅ MP 업데이트
-        game_progress_placeholder.write(f"🔹 진행 상황: 몬스터 MP {st.session_state.monster_mp} 남음")
-        mp_placeholder.progress(max(st.session_state.monster_mp / st.session_state.initial_mp, 0))
-
-        # ✅ 몬스터 MP가 0이면 게임 종료
-        if st.session_state.monster_mp <= 0:
-            st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
-            break
-
+        # ✅ 다음 게임까지 1초 대기
         time.sleep(1)
-
-    cap.release()  # ✅ 웹캠 해제
