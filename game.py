@@ -38,7 +38,7 @@ def run_game():
 
     # UI 구성
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info('📸 2초 후 자동으로 사진이 촬영됩니다!')
+    st.info('📸 3초 후 자동으로 사진이 촬영됩니다!')
 
     col1, col2 = st.columns(2)
     with col1:
@@ -52,9 +52,9 @@ def run_game():
             st.session_state.game_message = "게임이 강제 종료되었습니다!"
             st.stop()
 
-    # **2초 후 자동 촬영**
-    with st.spinner("📸 2초 후 자동 촬영 중... 손을 올바르게 올려주세요!"):
-        time.sleep(2)
+    # **3초 후 자동 촬영**
+    with st.spinner("📸 3초 후 자동 촬영 중... 손을 올바르게 올려주세요!"):
+        time.sleep(3)
 
     # **카메라 입력 (자동 촬영)**
     image = st.camera_input("📸 손 모양을 촬영 중...")
@@ -92,6 +92,7 @@ def run_game():
         elif user_choice != monster_choice:
             game_result = "❌ 패배"
             result_image = "image/졌다.png"
+            st.session_state.game_time_penalty = st.session_state.get("game_time_penalty", 0) + 3  # 패배 시 3초 추가
 
         # **MP가 0 이하가 되지 않도록 방지**
         monster_mp = max(monster_mp, 0)
