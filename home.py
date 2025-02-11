@@ -1,16 +1,8 @@
 import streamlit as st
-from eda import run_eda
-from home import run_home
-from ml import run_ml
 
-# 🔹 **사이드바 메뉴 추가**
-menu_option = st.sidebar.radio("메뉴 선택", ["🏠 홈", "🎮 게임",'앱개발과정'])
+def run_home():
 
-if menu_option == "🏠 홈":
-    run_home()
-
-elif menu_option == "🎮 게임":
-    run_eda()  
-
-elif menu_option == '앱개발과정':
-    run_ml()
+    st.title('가위바위보 몬스터 배틀')
+    st.subheader('가위바위보 게임 소개 페이지입니다!')
+    st.image("image/게임.png")
+  
