@@ -1,21 +1,17 @@
-import gradio as gr
+
+import streamlit as st
 from eda import run_eda
 from home import run_home
 from ml import run_ml
 
-def main():
-    with gr.Blocks() as demo:
-        gr.Markdown("# 📌 메뉴 선택")
+# 🔹 **사이드바 메뉴 추가**
+menu_option = st.sidebar.radio("메뉴 선택", ["🏠 홈", "🎮 게임",'앱개발과정'])
 
-        with gr.Tabs():
-            with gr.Tab("🏠 홈"):
-                run_home()
-            with gr.Tab("🎮 게임"):
-                run_eda()
-            with gr.Tab("📚 앱 개발 과정"):
-                run_ml()
+if menu_option == "🏠 홈":
+    run_home()
 
-    demo.launch(debug=True)
+elif menu_option == "🎮 게임":
+    run_eda()  
 
-if __name__ == "__main__":
-    main()
+elif menu_option == '앱개발과정':
+    run_ml()
