@@ -8,7 +8,6 @@ protobuf
 fastapi
 uvicorn
 aiortc
-
 streamlit-webrtc
 
 
