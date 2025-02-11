@@ -1,111 +1,79 @@
-import tensorflow as tf
-import numpy as np
-import time
+import streamlit as st
 import pandas as pd
 import os
-import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-from PIL import Image
-import cv2
 
-# Teachable Machine 모델 로드
-model_path = "model/keras_model.h5"
-model = tf.keras.models.load_model(model_path)
+from game import run_game
 
-# 클래스 매핑
-class_names = ["가위", "바위", "보"]
+def run_eda():
+    # 승리 기록 저장 파일
+    csv_file = "win_records.csv"
 
-# 승리 기록 저장 파일
-csv_file = "win_records.csv"
-if not os.path.exists(csv_file):
-    pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
+    # 기존 CSV 파일이 없거나, 컬럼이 없으면 초기화
+    if not os.path.exists(csv_file):
+        pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
 
-# Streamlit 앱 UI
-st.subheader("🎮 가위바위보 게임을 시작합니다!")
-st.info('웹캠을 활성화하고 네모 안에 손을 정확히 올려주세요!')
+    # 승리 기록 데이터 불러오기
+    win_df = pd.read_csv(csv_file)
 
-# **게임 재시작 & 종료 버튼**
-col_button1, col_button2 = st.columns(2)
-with col_button1:
-    if st.button("🔄 게임 재시작"):
+    # Streamlit 시작
+    st.title("🎮 가위바위보 몬스터 배틀")
+    
+    # 🔹 **세션 상태 초기화**
+    if "monster_mp" not in st.session_state:
         st.session_state.monster_mp = 50
-        st.rerun()
-with col_button2:
-    if st.button("🛑 게임 종료"):
-        st.stop()
+    if "initial_mp" not in st.session_state:
+        st.session_state.initial_mp = 50
+    if "user_name" not in st.session_state:
+        st.session_state.user_name = "Player"
+    if "temp_user_name" not in st.session_state:  # 🔹 닉네임 임시 저장 변수 추가
+        st.session_state.temp_user_name = st.session_state.user_name
 
-# 몬스터 MP 설정
-if "monster_mp" not in st.session_state:
-    st.session_state.monster_mp = 50
+    # 🎭 **게임 설정**
+    sub_menu = st.sidebar.radio("게임 메뉴", ["게임 설정", "게임 시작"])
 
-monster_mp = st.session_state.monster_mp
-start_time = time.time()
-win_count = 0
+    if sub_menu == "게임 설정":
+        st.subheader('게임방법 설명')
+        st.info('''가위 바위 보에서 이기면 몬스터의 MP를 갂을 수 있습니다.
+                    비기면 몬스터와 대치 상태를 유지합니다.
+                    지면 패널티 3초를 받게 됩니다.''')
+        st.markdown('''
+                    
+                    설정을 통해 게임몬스터의 MP를 설정해 게임의 난이도를 조절하여 게임을 즐길 수 있습니다.
 
-# Streamlit WebRTC 비디오 스트림 설정
-class VideoTransformer(VideoTransformerBase):
-    def transform(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        h, w, _ = img.shape
-        box_size = min(h, w) // 2
-        x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-        x2, y2 = x1 + box_size, y1 + box_size
-        
-        # 네모 박스 그리기
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        return img
+                    랭킹을 통해 다른 플레이어보다 빨리 또는 늦게 몬스터를 해치웠는지 확인할 수 있습니다.
+                    자! 그럼 게임을 즐겨주세요!!''')
+        st.subheader("🎭 게임 설정")
+        st.info("주의! 중복된 닉네임일 경우 자신의 순위가 변동되거나 등록되지 않을 수 있습니다. 그러니 자신만의 개성 넘치는 닉네임을 설정해보세요!")
 
-webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoTransformer)
+        # 🔹 **닉네임 입력 및 버튼 추가**
+        temp_name = st.text_input("🔹 닉네임을 입력하세요", value=st.session_state.temp_user_name)
 
-if webrtc_ctx.video_transformer:
-    st.write("📸 웹캠이 활성화되었습니다!")
+        if st.button("닉네임 입력"):
+            st.session_state.user_name = temp_name
+            st.session_state.temp_user_name = temp_name  # 🔹 임시 닉네임 변수 업데이트
+            st.success(f"닉네임이 '{temp_name}'(으)로 설정되었습니다!")
 
-    if st.button("🔍 이미지 캡처 및 분석"):
-        frame = webrtc_ctx.video_transformer.transform(webrtc_ctx.video_receiver.last_frame)
-        if frame is not None:
-            h, w, _ = frame.shape
-            box_size = min(h, w) // 2
-            x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-            x2, y2 = x1 + box_size, y1 + box_size
-            
-            roi = frame[y1:y2, x1:x2]
-            img = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-            img = cv2.resize(img, (224, 224))
-            img = np.array(img, dtype=np.float32) / 255.0
-            img = np.expand_dims(img, axis=0)
+        # 몬스터 초기 MP 설정
+        st.session_state.monster_mp = st.radio("🎭 몬스터 MP 선택", [30, 50, 80], index=[30, 50, 80].index(st.session_state.monster_mp))
+        st.session_state.initial_mp = st.session_state.monster_mp  # 시작 시 몬스터 MP 저장
 
-            prediction = model.predict(img)
-            class_index = np.argmax(prediction)
-            confidence = np.max(prediction)
-
-            if confidence < 0.7:
-                st.warning("⚠️ 손을 네모 안에 정확히 올려주세요!")
+        # 🎯 **MP별 랭킹 표시**
+        st.subheader(f"🏆 몬스터 MP {st.session_state.initial_mp} 랭킹")
+        if not win_df.empty:
+            mp_ranking = win_df[win_df["몬스터 MP"] == st.session_state.initial_mp].sort_values(by="시간").reset_index(drop=True)
+            mp_ranking.index += 1
+            if not mp_ranking.empty:
+                st.table(mp_ranking.head(5)[["이름", "시간", "승리 횟수"]])
             else:
-                user_choice = class_names[class_index]
-                monster_choice = np.random.choice(["가위", "바위", "보"])
-                game_result = "⚖️ 비김"
-                result_image = "image/비김.png"
+                st.write("⚠️ 아직 등록된 기록이 없습니다.")
 
-                if (user_choice == "가위" and monster_choice == "보") or \
-                   (user_choice == "바위" and monster_choice == "가위") or \
-                   (user_choice == "보" and monster_choice == "바위"):
-                    game_result = "✅ 승리"
-                    result_image = "image/이겼다.png"
-                    monster_mp -= 10
-                    win_count += 1
-                    st.session_state.monster_mp = monster_mp
-                elif user_choice != monster_choice:
-                    game_result = "❌ 패배"
-                    result_image = "image/졌다.png"
-                    start_time += 3  # 패배 시 패널티 3초 추가
+        # 🎖 **내 랭킹 확인**
+        if not win_df.empty and st.session_state.user_name in mp_ranking["이름"].values:
+            user_rank = mp_ranking[mp_ranking["이름"] == st.session_state.user_name].index.min()
+            st.write(f"📌 **{st.session_state.user_name}님의 현재 순위: {user_rank}위**")
+        else:
+            st.write("⚠️ 아직 등록된 랭킹이 없습니다.")
 
-                # 결과 출력
-                st.image(result_image, use_column_width=True)
-                st.write(f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}")
-                st.write(f"결과: {game_result}")
-                st.write(f"🔹 몬스터 MP 남음: {monster_mp}")
-                st.progress(monster_mp / 50)
-
-                if monster_mp <= 0:
-                    st.success("🎉 몬스터를 물리쳤습니다!")
-                    st.image("image/승리.png", use_column_width=True)
+    # 🎮 **게임 시작**
+    elif sub_menu == "게임 시작":
+        run_game()
