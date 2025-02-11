@@ -38,15 +38,19 @@ def run_game():
     # Streamlit WebRTC를 활용한 웹캠 스트리밍
     class VideoTransformer(VideoTransformerBase):
         def transform(self, frame):
-            img = frame.to_ndarray(format="bgr24")
-            h, w, _ = img.shape
-            box_size = min(h, w) // 2
-            x1, y1 = (w - box_size) // 2, (h - box_size) // 2
-            x2, y2 = x1 + box_size, y1 + box_size
+            try:
+                img = frame.to_ndarray(format="bgr24")
+                h, w, _ = img.shape
+                box_size = min(h, w) // 2
+                x1, y1 = (w - box_size) // 2, (h - box_size) // 2
+                x2, y2 = x1 + box_size, y1 + box_size
 
-            # 네모 박스 그리기
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            return img
+                # 네모 박스 그리기
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                return img
+            except Exception as e:
+                st.error(f"프레임 처리 오류: {e}")
+                return frame
 
     webrtc_ctx = webrtc_streamer(
         key="game_stream",
