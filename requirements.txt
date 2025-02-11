@@ -1,14 +1,14 @@
-
 pandas
-opencv-python-headless==4.8.1.78
+opencv-python 
 tensorflow==2.15
 numpy
 Pillow
-protobuf
-fastapi
-uvicorn
-aiortc
-streamlit-webrtc
+protobuf==3.20.3  
+
+fastapi  
+uvicorn 
+aiortc 
+streamlit-webrtc  
 
 
 
