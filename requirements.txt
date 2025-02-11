@@ -1,14 +1,14 @@
-pandas
-opencv-python 
+streamlit 
+streamlit-webrtc
 tensorflow==2.15
+pandas
+opencv-python
 numpy
 Pillow
-protobuf==3.20.3  
+protobuf==3.20.3
 
-fastapi  
-uvicorn 
-aiortc 
-streamlit-webrtc  
+fastapi
+uvicorn
+aiortc
 
-
-
+av 
