@@ -11,3 +11,8 @@ fastapi
 uvicorn
 aiortc
 av
+
+gradio
+numpy
+
+opencv-python-headless
