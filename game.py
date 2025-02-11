@@ -1,10 +1,9 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-import os
 import cv2
-from PIL import Image
 import time
+from PIL import Image
 
 def run_game():
     # ✅ 모델 로드
@@ -18,28 +17,58 @@ def run_game():
 
     # ✅ 세션 변수 초기화
     if "monster_mp" not in st.session_state:
-        st.session_state.monster_mp = 50  # 기본값 설정
+        st.session_state.monster_mp = 50  
     if "initial_mp" not in st.session_state:
         st.session_state.initial_mp = st.session_state.monster_mp
     if "game_running" not in st.session_state:
         st.session_state.game_running = True
 
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info("📸 아래 버튼을 눌러 손 모양을 촬영하세요! 몬스터 MP가 0이 될 때까지 계속 도전하세요!")
+    st.info("📸 아래 웹캠에서 네모 박스 안에 손을 위치시키고 촬영하세요!")
 
-    # ✅ 몬스터 MP가 0이면 게임 종료 메시지 표시
-    if st.session_state.monster_mp <= 0:
-        st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
+    # ✅ OpenCV 웹캠 실행
+    cap = cv2.VideoCapture(0)
+    frame_placeholder = st.empty()
+    capture_button = st.button("📸 촬영")
+
+    if not cap.isOpened():
+        st.error("❌ 웹캠을 찾을 수 없습니다.")
         return
 
-    # ✅ 카메라 입력 (사용자가 직접 촬영)
-    img_file = st.camera_input("📷 손 모양을 촬영하세요")
+    # ✅ 실시간 웹캠 화면 출력 (네모 박스 포함)
+    while not capture_button:
+        ret, frame = cap.read()
+        if not ret:
+            st.error("❌ 웹캠을 찾을 수 없습니다.")
+            return
 
-    if img_file:
-        # ✅ 촬영된 이미지를 OpenCV 형식으로 변환
-        img = Image.open(img_file)
-        img = img.convert("RGB")
-        img = img.resize((224, 224))  # 모델 입력 크기로 조정
+        # ✅ 네모 박스 위치 설정 (화면 중앙)
+        h, w, _ = frame.shape
+        box_size = min(h, w) // 2
+        x1, y1 = (w - box_size) // 2, (h - box_size) // 2
+        x2, y2 = x1 + box_size, y1 + box_size
+
+        # ✅ 네모 박스 표시
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # ✅ Streamlit에 실시간 웹캠 프레임 표시
+        frame_placeholder.image(frame, channels="RGB", use_column_width=True)
+
+        # ✅ 0.1초 대기
+        time.sleep(0.1)
+
+    # ✅ 촬영 버튼이 눌리면 네모 박스 내부 이미지 캡처
+    ret, frame = cap.read()
+    cap.release()
+
+    if ret:
+        roi = frame[y1:y2, x1:x2]  # 네모 박스 내부 영역만 자르기
+        roi = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+
+        # ✅ AI 모델 입력 전처리
+        img = Image.fromarray(roi)
+        img = img.resize((224, 224))
         img_array = np.array(img, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
@@ -58,7 +87,7 @@ def run_game():
                (user_choice == "바위" and monster_choice == "가위") or \
                (user_choice == "보" and monster_choice == "바위"):
                 game_result = "✅ 승리"
-                st.session_state.monster_mp -= 10  # 🔥 승리 시 몬스터 MP 10 감소
+                st.session_state.monster_mp -= 10  
             elif user_choice != monster_choice:
                 game_result = "❌ 패배"
 
@@ -73,10 +102,8 @@ def run_game():
             # ✅ 몬스터 MP가 0이면 게임 종료
             if st.session_state.monster_mp <= 0:
                 st.success("🎉 몬스터를 물리쳤습니다! 게임 종료!")
-                return
-
+                st.session_state.game_running = False
         else:
-            st.warning("⚠️ 손을 정확히 보여주세요! 판별 실패.")
-
-    # ✅ 게임이 끝나지 않았으면, 계속 촬영 가능하도록 UI 유지
-    st.button("📸 다시 촬영하기")
+            st.warning("⚠️ 손을 네모 박스 안에 정확히 위치시키고 다시 촬영해주세요.")
+    else:
+        st.error("❌ 이미지 촬영에 실패했습니다. 다시 시도해주세요.")
