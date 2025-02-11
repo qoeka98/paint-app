@@ -8,7 +8,8 @@ from PIL import Image
 import cv2
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 def run_game():
-    # Teachable Machine 모델 로드
+    
+    # 모델 로드
     model_path = "model/keras_model.h5"
     model = tf.keras.models.load_model(model_path)
 
@@ -20,8 +21,19 @@ def run_game():
     if not os.path.exists(csv_file):
         pd.DataFrame(columns=["이름", "시간", "승리 횟수", "몬스터 MP"]).to_csv(csv_file, index=False)
 
-    st.subheader("🎮 게임을 시작합니다!")
-    st.info('웹 카메라 속 초록 상자에 정확히 손모양을 보여주세요')
+    # 게임 UI
+    st.title("🎮 가위바위보 몬스터 배틀")
+    st.subheader("📷 웹캠을 활성화하고 손을 네모 안에 맞춰 가위, 바위, 보를 선택하세요!")
+
+    # **게임 재시작 & 종료 버튼**
+    col_button1, col_button2 = st.columns(2)
+    with col_button1:
+        if st.button("🔄 게임 재시작"):
+            st.session_state.monster_mp = 50
+            st.rerun()
+    with col_button2:
+        if st.button("🛑 게임 종료"):
+            st.stop()
 
     # Streamlit WebRTC를 활용한 웹캠 스트리밍
     class VideoTransformer(VideoTransformerBase):
@@ -31,16 +43,18 @@ def run_game():
             box_size = min(h, w) // 2
             x1, y1 = (w - box_size) // 2, (h - box_size) // 2
             x2, y2 = x1 + box_size, y1 + box_size
-            
+
             # 네모 박스 그리기
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             return img
 
     webrtc_ctx = webrtc_streamer(key="game_stream", video_transformer_factory=VideoTransformer)
 
+    # 결과 표시 영역
+    result_placeholder = st.empty()
+
     if webrtc_ctx.video_transformer:
         st.write("📸 웹캠이 활성화되었습니다!")
-        st.info("웹캠을 통해 손을 네모 안에 맞춰 가위, 바위, 보를 선택하세요!")
         
         if st.button("🔍 이미지 캡처 및 분석"):
             if webrtc_ctx.video_receiver and webrtc_ctx.video_receiver.last_frame is not None:
@@ -77,6 +91,6 @@ def run_game():
                         game_result = "❌ 패배"
                         result_image = "image/졌다.png"
 
-                    st.image(result_image, use_column_width=True)
+                    result_placeholder.image(result_image, use_column_width=True)
                     st.write(f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}")
                     st.write(f"결과: {game_result}")
