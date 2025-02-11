@@ -37,7 +37,7 @@ def run_game():
 
     # UI 구성
     st.subheader("🎮 가위바위보 몬스터 배틀 게임")
-    st.info('웹 카메라를 이용하여 손 모양을 촬영해주세요!')
+    st.info('📸 손 모양을 촬영하여 가위, 바위, 보를 인식하세요!')
 
     col1, col2 = st.columns(2)
     with col1:
@@ -75,17 +75,21 @@ def run_game():
 
         monster_mp = st.session_state.monster_mp
         game_result = "⚖️ 비김"
-        
+        result_image = "image/비김.png"
+
         if (user_choice == "가위" and monster_choice == "보") or \
            (user_choice == "바위" and monster_choice == "가위") or \
            (user_choice == "보" and monster_choice == "바위"):
             game_result = "✅ 승리"
-            monster_mp -= 10
+            result_image = "image/이겼다.png"
+            monster_mp -= 10  # 🔥 **승리 시 몬스터 MP 10 감소**
         elif user_choice != monster_choice:
             game_result = "❌ 패배"
+            result_image = "image/졌다.png"
 
         # 결과 출력
         st.subheader(f"🖐 내 선택: {user_choice}  VS  👾 몬스터 선택: {monster_choice}")
+        st.image(result_image, use_container_width=True)
         st.markdown(f"### 결과 ➡️ **{game_result}**")
 
         # 몬스터 HP 업데이트
@@ -112,4 +116,3 @@ def run_game():
             st.subheader(f"🏆 몬스터 MP {st.session_state.initial_mp} 랭킹")
             ranking_df = win_df[win_df["몬스터 MP"] == st.session_state.initial_mp].sort_values(by="시간").head(5)
             st.table(ranking_df.set_index("이름"))
-
