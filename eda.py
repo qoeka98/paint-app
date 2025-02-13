@@ -42,7 +42,7 @@ def run_eda():
 
             📌 지면 패널티로 몬스터의 MP가 회복됩니다. 
 
-            📌 5번의 대결이 끝나면 최종 승리 횟수가 기록됩니다
+            📌 5번의 대결이 끝나면 최종 승리 횟수가 기록됩니다.
             """
         )
         st.info("닉네임이 중복될 수 있습니다. 중복되면 결과에 반영되지 않을 수 있으니 자신만의 유니크한 닉네임을 설정하세요!")
@@ -54,7 +54,8 @@ def run_eda():
             st.success(f"닉네임이 '{temp_name}'(으)로 설정되었습니다!")
         
         # 기본 랭킹만 표시 (몬스터 MP 선택 제거)
-        st.subheader("🏆 기본 랭킹")
+        st.subheader("🏆 게임 랭킹을 확인 해보세요")
+        st.info('누가 누가 많이 몬스터의 MP를 갂고 승률이 높을까?!🏆')
         if not win_df.empty:
             # 전체 기록을 승리 횟수 내림차순으로 정렬하여 상위 5개 기록 표시
             win_df_sorted = win_df.sort_values(by=["승리 횟수"], ascending=False).reset_index(drop=True)
