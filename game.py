@@ -55,9 +55,11 @@ def reset_game():
     st.rerun()
 
 def run_game():
-    st.title("📸 가위바위보 사진 게임")
+    st.subheader("📸 가위바위보 사진 게임")
     if st.button("🔄 게임 재시작"):
         reset_game()
+
+    
     
     # 세션 스테이트 초기화
     if "captured_photos" not in st.session_state:
@@ -76,16 +78,19 @@ def run_game():
         st.session_state.last_result = ""
     
     # 진행 상태: 촬영된 사진의 수만 텍스트로 표시 (progress bar 제거)
-    st.subheader(f"📸 현재 촬영된 사진: {len(st.session_state.captured_photos)}/5")
+
     st.info("닉네임이 중복될 수 있습니다. 중복되면 결과에 반영되지 않을 수 있으니 자신만의 유니크한 닉네임을 설정하세요!")
     temp_name = st.text_input("🔹 닉네임을 입력하세요", value=st.session_state.temp_user_name)
         
-    if st.button("입력후 좌측 게임 시작으로 이동하세요"):
+    if st.button("입력"):
             st.session_state.user_name = temp_name
             st.session_state.temp_user_name = temp_name
             st.success(f"닉네임이 '{temp_name}'(으)로 설정되었습니다!")
+
+    
+    st.subheader(f"📸 현재 촬영된 사진: {len(st.session_state.captured_photos)}/5")
     st.info('사진 촬영을 통해 가위 바위 보 스킬 5장을 획득합시다!')
-    st.info('Take Photo를 통해사진을찍고 Clear Photo를 눌러 초기화시키고 다시 Take Photo를 이용해 사진을 찍으면됩니다 ' )
+    st.info('Take Photo를 통해사진을찍고 Clear Photo를 눌러 초기화시키고 다시 Take Photo를 이용해 사진을 찍으면됩니다다 ' )
     
     captured_photo = st.camera_input("Take Photo & Clear Photo를 통해 손 모양을 촬영하세요", key="camera_input")
     if captured_photo:
