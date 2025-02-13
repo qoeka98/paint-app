@@ -78,6 +78,7 @@ def run_game():
     # 진행 상태: 촬영된 사진의 수만 텍스트로 표시 (progress bar 제거)
     st.subheader(f"📸 현재 촬영된 사진: {len(st.session_state.captured_photos)}/5")
     st.info('사진 촬영을 통해 가위 바위 보 스킬 5장을 획득합시다!')
+    st.info('Take Photo를 통해사진을찍고 Clear Photo를 눌러 초기화시키고 다시 Take Photo를 이용해 사진을 찍으면됩니다 ' )
     
     captured_photo = st.camera_input("Take Photo & Clear Photo를 통해 손 모양을 촬영하세요", key="camera_input")
     if captured_photo:
