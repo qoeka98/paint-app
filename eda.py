@@ -48,7 +48,7 @@ def run_eda():
         st.info("닉네임이 중복될 수 있습니다. 중복되면 결과에 반영되지 않을 수 있으니 자신만의 유니크한 닉네임을 설정하세요!")
         temp_name = st.text_input("🔹 닉네임을 입력하세요", value=st.session_state.temp_user_name)
         
-        if st.button("입력후 게임 시작으로 이동하세요"):
+        if st.button("입력후 좌측 게임 시작으로 이동하세요"):
             st.session_state.user_name = temp_name
             st.session_state.temp_user_name = temp_name
             st.success(f"닉네임이 '{temp_name}'(으)로 설정되었습니다!")
