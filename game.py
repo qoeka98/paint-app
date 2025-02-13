@@ -87,7 +87,7 @@ def run_game():
             st.session_state.captured_photos.append(image_path)
             st.success(f"✅ {file_name} 촬영 완료! ({len(st.session_state.captured_photos)}/5)")
         else:
-            st.warning("📸 이미 5장의 사진을 촬영하였습니다!")
+            st.warning("📸 이미 5장의 사진을 촬영하였습니다!!")
     
     selected_image = None
     if len(st.session_state.captured_photos) == 5:
@@ -143,7 +143,7 @@ def run_game():
         st.write("---")
         
         st.write("")
-        st.title('게임종료!')
+        st.title('🎊 게임 종료! 🎉"')
         st.write("")
         st.image("image/승리.png", use_container_width=True)
         
